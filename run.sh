@@ -1,0 +1,1 @@
+java -cp etst/target/etst-1.0-SNAPSHOT.jar:$HOME/.m2/repository/org/jsoup/jsoup/1.10.2/jsoup-1.10.2.jar:$HOME/.m2/repository/org/glassfish/javax.json/1.0.2/javax.json-1.0.2.jar com.christosmal.etst.App
