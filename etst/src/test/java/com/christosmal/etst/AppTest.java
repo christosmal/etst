@@ -31,8 +31,17 @@ public class AppTest
     /**
      * Rigourous Test :-)
      */
-    public void testApp()
-    {
-        assertTrue( true );
+    public void testOrigUrl() {
+        assertTrue (App.main("https://github.com/egis/handbook/blob/master/Tech-Stack.md") == 0 );
     }
+    
+    public void testInvalidUrl() {
+        assertTrue(App.main("someInvalidUrl") == -1 );
+    }
+    
+    public void testIncorrectUrl() {
+        assertTrue(App.main("http://www.google.com") == -1 );
+    }
+    
+    
 }
