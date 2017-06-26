@@ -46,86 +46,10 @@ public class ConvertionFactory {
         return configs.get(c);
     }
     
-    private static JsonValue convertArrays(CVArrays cv) {
-        JsonObjectBuilder jbuilder = Json.createObjectBuilder();
-        for (int i = 0; i < cv.getColumns().length; i++) {
-            jbuilder.add(cv.getColumns()[i], cv.getValues()[i]);
-        }
-        return jbuilder.build();
+    public Map<String, Object> getCache() {
+        return cache;
     }
-    
-    private static String[] convertToArray(Elements cells) {
-        String[] ret = new String[cells.size()];
-        for (int i = 0; i < cells.size(); i++) {
-            Element cell = cells.get(i);
-            ret[i] = cell.text();
-        }
-        return ret;
-    }
-    
-    private Object convertElement(Element elem) throws ConvertionException {
-        Map config = (Map)getConfig(Element.class).getConfiguration(elem);
-        String op = (String)config.get(elem.nodeName());
-        if (op.equals("return"))
-            return elem.text();
-        else if (op.equals("cacheStoreChildren")) {
-            for (Element child : elem.children()) {
-                cache.put(elem.nodeName(), convertToArray(child.children()));
-            }
-            return null;
-        } else if (op.startsWith("cacheLookupChildren.")) {
-            Object cachedValue = cache.get(op.substring("cacheLookupChildren.".length()));
-            JsonArrayBuilder jarray = Json.createArrayBuilder();
-            for (Element child : elem.children()) {
-                try {
-                    Object value = convertToArray(child.children());
-                    CVArrays cv = new CVArrays();
-                    cv.setColumns((String[])cachedValue);
-                    cv.setValues((String[])value);
-                    JsonValue jv = getConverter(CVArrays.class, JsonValue.class).convert(cv);
-                    jarray.add(jv);
-                } catch (Exception ex) {
-                    ex.printStackTrace();
-                }
-            }
-            return jarray.build();
-        } else if (op.equals("recurse"))
-            return convertElements(elem.children());
-        else 
-            return null;
-    }
-    
-    private JsonValue convertElements(Elements elements) throws ConvertionException {
-        JsonObjectBuilder jbuilder = Json.createObjectBuilder();
-        String parent = "";
-        if (elements.isEmpty())
-            throw new ConvertionException("There are no elements to be converted");
-        for (Element elem : elements) {
-            try {
-                Object o = getConverter(Element.class, Object.class).convert(elem);
-                if (o == null)
-                    continue;
-                else if (o instanceof String) 
-                    parent = (String)o;
-                else if (o instanceof CVArrays) {
-                    JsonValue jv = getConverter(CVArrays.class, JsonValue.class).convert((CVArrays)o);
-                    if (parent.equals(""))
-                        return jv;
-                    jbuilder.add(parent, jv);
-                }
-                else if (o instanceof JsonValue) {
-                    JsonValue jv = (JsonValue)o;
-                    if (parent.equals(""))
-                        return jv;
-                    jbuilder.add(parent, jv);
-                }
-            } catch (Exception x) {
-                x.printStackTrace();
-            }
-        }
-        return jbuilder.build();
-    }
-    
+        
     public <T extends Object, U extends Object> Converter<T, U> getConverter(Class<T> t, Class<U> u) throws ConvertionException {
         if (t.equals(String.class) && u.equals(URL.class))
             return (T s) -> (U)new URL((String)s);
@@ -135,11 +59,11 @@ public class ConvertionFactory {
             String searchElems = (String)(getConfig(Document.class).getConfiguration(null));
             return (T doc) -> (U)((Document)doc).select(searchElems);
         } else if (t.equals(Elements.class) && u.equals(JsonObject.class)) 
-            return (T elems) -> (U)convertElements((Elements)elems);
+            return (Converter<T, U>)new ElementsConverter(this);
         else if (t.equals(Element.class) && u.equals(Object.class)) 
-            return (T elem) -> (U)convertElement((Element)elem);
+            return (Converter<T, U>)new ElementConverter(this);
         else if (t.equals(CVArrays.class) && u.equals(JsonValue.class))
-            return (T cv) -> (U)convertArrays((CVArrays)cv);
+            return (T cv) -> (U)ElementConvertion.convertArrays((CVArrays)cv);
         // More Converter implemenations to be added here
         throw new ConvertionException("No convertion exists to convert from "+t.getName()+" to "+u.getName());
     }
